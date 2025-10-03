@@ -1,35 +1,18 @@
 {
-  "name": "uniclinica-whatsapp-bot",
+  "name": "uniclinica-bot",
   "version": "1.0.0",
-  "description": "Bot de atendimento automatizado para Uniclínica Saúde e Bem Estar",
+  "description": "Bot para WhatsApp da Uniclínica",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js"
+    "start": "node index.js"
   },
-  "keywords": [
-    "whatsapp",
-    "bot",
-    "clinica",
-    "saude mental",
-    "psiquiatria"
-  ],
-  "author": "Uniclínica Saúde e Bem Estar",
-  "license": "MIT",
   "dependencies": {
-    "dependencies": {
-  "express": "^4.18.2",
-  "whatsapp-web.js": "...",
-  "qrcode-terminal": "..."
-}
-    "whatsapp-web.js": "^1.23.0",
+    "express": "^4.18.2",
+    "whatsapp-web.js": "^1.21.0",
     "qrcode-terminal": "^0.12.0",
-    "node-cron": "^3.0.3",
-    "moment": "^2.29.4"
+    "node-cron": "^3.0.2"
   },
-  "devDependencies": {
-    "nodemon": "^3.0.1"
+  "engines": {
+    "node": "18.x"
   }
-
 }
-
