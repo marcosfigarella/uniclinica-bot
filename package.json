@@ -17,6 +17,11 @@
   "author": "Uniclínica Saúde e Bem Estar",
   "license": "MIT",
   "dependencies": {
+    "dependencies": {
+  "express": "^4.18.2",
+  "whatsapp-web.js": "...",
+  "qrcode-terminal": "..."
+}
     "whatsapp-web.js": "^1.23.0",
     "qrcode-terminal": "^0.12.0",
     "node-cron": "^3.0.3",
@@ -25,4 +30,5 @@
   "devDependencies": {
     "nodemon": "^3.0.1"
   }
+
 }
