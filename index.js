@@ -1,3 +1,14 @@
+const express = require('express');
+const app = express();
+
+app.get('/', (req, res) => {
+    res.send('🤖 CamilaBot está funcionando!');
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Servidor rodando na porta ${PORT}`);
+});
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const cron = require('node-cron');
@@ -549,4 +560,5 @@ process.on('SIGTERM', async () => {
   console.log('\n🔄 Encerrando Camila...');
   await camila.client.destroy();
   process.exit(0);
+
 });
