@@ -14,8 +14,22 @@ let isClientReady = false;
 // Armazenar informações dos usuários
 let userSessions = {};
 
-// Função para obter próximos dias úteis disponíveis
-function getNextAvailableDays(count = 7) {
+// Função para obter saudação baseada no horário
+function getGreetingByTime() {
+    const now = new Date();
+    const hour = now.getHours();
+    
+    if (hour >= 5 && hour < 12) {
+        return 'Bom dia';
+    } else if (hour >= 12 && hour < 18) {
+        return 'Boa tarde';
+    } else {
+        return 'Boa noite';
+    }
+}
+
+// Função para obter próximos dias úteis disponíveis (apenas dias específicos)
+function getNextAvailableDays(count = 10) {
     const days = [];
     const today = new Date();
     let currentDate = new Date(today);
@@ -24,8 +38,8 @@ function getNextAvailableDays(count = 7) {
     while (days.length < count) {
         const dayOfWeek = currentDate.getDay();
         
-        // Segunda a sexta (1-5) ou sábado até 12h (6)
-        if (dayOfWeek >= 1 && dayOfWeek <= 6) {
+        // Segunda (1), Quarta (3), Quinta (4), Sexta (5), Sábado (6)
+        if (dayOfWeek === 1 || dayOfWeek === 3 || dayOfWeek === 4 || dayOfWeek === 5 || dayOfWeek === 6) {
             const dateStr = currentDate.toLocaleDateString('pt-BR', {
                 weekday: 'long',
                 day: '2-digit',
@@ -43,21 +57,72 @@ function getNextAvailableDays(count = 7) {
     return days;
 }
 
-// Função para obter horários disponíveis
-function getAvailableSlots(date) {
+// Função para simular consulta ao Google Calendar e sugerir horário
+function suggestAvailableTime(date, userPreference = null) {
     const dayOfWeek = date.getDay();
+    let availableSlots = [];
     
     if (dayOfWeek === 6) { // Sábado
-        return ['08:00', '09:00', '10:00', '11:00'];
-    } else { // Segunda a sexta
-        return ['08:00', '09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00'];
+        availableSlots = ['08:00', '09:00', '10:00', '11:00'];
+    } else { // Segunda, Quarta, Quinta, Sexta
+        availableSlots = ['08:00', '09:00', '10:00', '11:00', '14:00', '15:00', '16:00', '17:00'];
     }
+    
+    // Simular alguns horários ocupados (depois integrar com Google Calendar real)
+    const occupiedSlots = ['09:00', '15:00']; // Exemplo de horários ocupados
+    const freeSlots = availableSlots.filter(slot => !occupiedSlots.includes(slot));
+    
+    // Se o usuário tem preferência, tentar acomodar
+    if (userPreference) {
+        const preferredHour = extractPreferredTime(userPreference);
+        if (preferredHour && freeSlots.includes(preferredHour)) {
+            return preferredHour;
+        }
+    }
+    
+    // Retornar primeiro horário disponível
+    return freeSlots.length > 0 ? freeSlots[0] : availableSlots[0];
+}
+
+// Função para extrair preferência de horário da mensagem do usuário
+function extractPreferredTime(message) {
+    const msgLower = message.toLowerCase();
+    
+    // Manhã
+    if (msgLower.includes('manhã') || msgLower.includes('manha') || msgLower.includes('cedo')) {
+        return '08:00';
+    }
+    
+    // Tarde
+    if (msgLower.includes('tarde') || msgLower.includes('14') || msgLower.includes('15') || msgLower.includes('16')) {
+        return '14:00';
+    }
+    
+    // Horários específicos
+    const timeRegex = /(\d{1,2}):?(\d{0,2})\s*(h|horas?)?/g;
+    const matches = message.match(timeRegex);
+    
+    if (matches) {
+        for (let match of matches) {
+            const cleanTime = match.replace(/[^\d:]/g, '');
+            if (cleanTime.includes(':')) {
+                return cleanTime.length === 4 ? '0' + cleanTime : cleanTime;
+            } else if (cleanTime.length <= 2) {
+                const hour = parseInt(cleanTime);
+                if (hour >= 8 && hour <= 17) {
+                    return hour.toString().padStart(2, '0') + ':00';
+                }
+            }
+        }
+    }
+    
+    return null;
 }
 
 // Função para mostrar menu principal
 function getMainMenu(userName = null) {
     const greeting = userName ? `${userName}, escolha` : 'Escolha';
-    return `${greeting} uma das opções abaixo digitando o número correspondente:\n\n1️⃣ Agendar consulta\n2️⃣ Informações de atendimento\n3️⃣ Endereço e horários\n4️⃣ Valor da consulta\n\nDigite apenas o número da opção desejada! 😊`;
+    return `${greeting} uma das opções abaixo digitando o número correspondente:\\n\\n1️⃣ Agendar consulta\\n2️⃣ Informações de atendimento\\n3️⃣ Endereço e horários\\n4️⃣ Valor da consulta\\n\\nDigite apenas o número da opção desejada! 😊`;
 }
 
 // Rota principal
@@ -207,6 +272,7 @@ client.on('message', async message => {
     const userId = message.from;
     const msgLower = message.body.toLowerCase();
     const msgTrimmed = message.body.trim();
+    const timeGreeting = getGreetingByTime();
     
     // Inicializar sessão do usuário se não existir
     if (!userSessions[userId]) {
@@ -216,7 +282,8 @@ client.on('message', async message => {
             awaitingName: false,
             currentStep: null,
             selectedDate: null,
-            selectedTime: null
+            selectedTime: null,
+            userPreference: null
         };
     }
     
@@ -239,10 +306,10 @@ client.on('message', async message => {
         userSession.hasIntroduced = true;
         
         if (userSession.name) {
-            message.reply(`Olá ${userSession.name}! 😊 Que alegria receber seu contato! Eu sou a Camila, secretária do Dr. Marcos Figarella! Estou muito feliz em poder te ajudar hoje!\n\n${getMainMenu(userSession.name)}`);
+            message.reply(`${timeGreeting} ${userSession.name}! 😊 Que alegria receber seu contato! Eu sou a Camila, secretária do Dr. Marcos Figarella! Estou muito feliz em poder te ajudar hoje!\\n\\n${getMainMenu(userSession.name)}`);
         } else {
             userSession.awaitingName = true;
-            message.reply('Olá! 😊 Que alegria receber seu contato! Eu sou a Camila, secretária do Dr. Marcos Figarella! Estou muito feliz em falar com você! Para te atender melhor, qual é o seu nome? ❤️');
+            message.reply(`${timeGreeting}! 😊 Que alegria receber seu contato! Eu sou a Camila, secretária do Dr. Marcos Figarella! Estou muito feliz em falar com você! Para te atender melhor, qual é o seu nome? ❤️`);
         }
     }
     
@@ -252,7 +319,7 @@ client.on('message', async message => {
         if (name) {
             userSession.name = name;
             userSession.awaitingName = false;
-            message.reply(`Muito prazer, ${name}! 😊 Agora posso te atender com todo carinho!\n\n${getMainMenu(name)}`);
+            message.reply(`Muito prazer, ${name}! 😊 Agora posso te atender com todo carinho!\\n\\n${getMainMenu(name)}`);
         } else {
             message.reply('Desculpe, não consegui entender seu nome. Pode me dizer novamente, por favor? Por exemplo: "Meu nome é João" ou "Me chamo Maria" 😊');
         }
@@ -264,67 +331,60 @@ client.on('message', async message => {
         
         switch (option) {
             case 1: // Agendar consulta
-                userSession.currentStep = 'scheduling_date';
-                const availableDays = getNextAvailableDays();
-                let daysText = '';
-                availableDays.forEach((day, index) => {
-                    daysText += `${index + 1}. ${day.formatted}\n`;
-                });
-                
+                userSession.currentStep = 'scheduling_preference';
                 const greeting1 = userSession.name ? `${userSession.name}, que` : 'Que';
-                message.reply(`${greeting1} maravilha! Fico muito feliz em ajudar você com o agendamento! 😊📅\n\nO Dr. Marcos atende:\n• Psiquiatria\n• Saúde Mental\n• Avaliações psiquiátricas\n\n*Dias disponíveis:*\n${daysText}\nDigite o número do dia que você prefere! ❤️`);
+                message.reply(`${greeting1} maravilha! Fico muito feliz em ajudar você com o agendamento! 😊📅\\n\\nO Dr. Marcos atende:\\n• Psiquiatria\\n• Saúde Mental\\n• Avaliações psiquiátricas\\n\\n📅 *Dias disponíveis para atendimento:*\\n• Segunda-feira\\n• Quarta-feira\\n• Quinta-feira\\n• Sexta-feira\\n• Sábado\\n\\nQual horário se adequa melhor à sua disponibilidade? Por exemplo: "manhã", "tarde", "14h", etc. ❤️`);
                 break;
                 
             case 2: // Informações de atendimento
                 const greeting2 = userSession.name ? `${userSession.name}, fico` : 'Fico';
-                message.reply(`${greeting2} muito feliz em esclarecer sobre o atendimento! 😊\n\n👨‍⚕️ *Dr. Marcos Figarella*\n• Psiquiatra com vasta experiência\n• Atendimento humanizado e acolhedor\n• Foco em Psiquiatria e Saúde Mental\n\n🔹 *Especialidades:*\n• Transtornos de Humor\n• Ansiedade e Depressão\n• Transtornos do Sono\n• Avaliações Psiquiátricas\n• Acompanhamento Psiquiátrico\n\n*Primeira consulta:* Avaliação completa\n*Retornos:* Acompanhamento e ajustes\n\n${getMainMenu(userSession.name)}`);
+                message.reply(`${greeting2} muito feliz em esclarecer sobre o atendimento! 😊\\n\\n👨‍⚕️ *Dr. Marcos Figarella*\\n• Psiquiatra com vasta experiência\\n• Atendimento humanizado e acolhedor\\n• Foco em Psiquiatria e Saúde Mental\\n\\n🔹 *Especialidades:*\\n• Transtornos de Humor\\n• Ansiedade e Depressão\\n• Transtornos do Sono\\n• Avaliações Psiquiátricas\\n• Acompanhamento Psiquiátrico\\n\\n*Primeira consulta:* Avaliação completa\\n*Retornos:* Acompanhamento e ajustes\\n\\n${getMainMenu(userSession.name)}`);
                 break;
                 
             case 3: // Endereço e horários
                 const greeting3 = userSession.name ? `${userSession.name}, aqui` : 'Aqui';
-                message.reply(`${greeting3} estão as informações de localização e horários! 😊📍\n\n🏥 *Endereço:*\nUniclínica\n[INSERIR ENDEREÇO COMPLETO AQUI]\n\n🕐 *Horários de atendimento:*\n• Segunda a Sexta: 08h às 18h\n• Sábado: 08h às 12h\n• Domingo: Fechado\n\n🚗 *Facilidades:*\n• Estacionamento disponível\n• Localização de fácil acesso\n• Transporte público próximo\n\n${getMainMenu(userSession.name)}`);
+                message.reply(`${greeting3} estão as informações de localização e horários! 😊📍\\n\\n🏥 *Endereço:*\\nUniclínica\\n[INSERIR ENDEREÇO COMPLETO AQUI]\\n\\n🕐 *Horários de atendimento:*\\n• Segunda-feira: 08h às 18h\\n• Quarta-feira: 08h às 18h\\n• Quinta-feira: 08h às 18h\\n• Sexta-feira: 08h às 18h\\n• Sábado: 08h às 12h\\n\\n🚗 *Facilidades:*\\n• Estacionamento disponível\\n• Localização de fácil acesso\\n• Transporte público próximo\\n\\n${getMainMenu(userSession.name)}`);
                 break;
                 
             case 4: // Valor da consulta
                 const greeting4 = userSession.name ? `${userSession.name}, aqui` : 'Aqui';
-                message.reply(`${greeting4} estão os valores das consultas! 😊💰\n\n💵 *Valor da Consulta: R$ 400,00*\n\n💳 *Formas de pagamento:*\n• Dinheiro\n• Cartão de débito/crédito\n• PIX\n• Transferência bancária\n\n*Observações:*\n• Mesmo valor para primeira consulta e retornos\n• Pagamento no dia da consulta\n• Valores transparentes, sem taxas extras\n\n${getMainMenu(userSession.name)}`);
+                message.reply(`${greeting4} estão os valores das consultas! 😊💰\\n\\n💵 *Valor da Consulta: R$ 400,00*\\n\\n💳 *Formas de pagamento:*\\n• Dinheiro\\n• Cartão de débito/crédito\\n• PIX\\n• Transferência bancária\\n\\n*Observações:*\\n• Mesmo valor para primeira consulta e retornos\\n• Pagamento no dia da consulta\\n• Valores transparentes, sem taxas extras\\n\\n${getMainMenu(userSession.name)}`);
                 break;
         }
     }
     
-    // AGENDAMENTO - Escolha de data
-    else if (userSession.currentStep === 'scheduling_date' && /^[1-7]$/.test(msgTrimmed)) {
-        const dayIndex = parseInt(msgTrimmed) - 1;
-        const availableDays = getNextAvailableDays();
+    // AGENDAMENTO - Capturar preferência de horário
+    else if (userSession.currentStep === 'scheduling_preference') {
+        userSession.userPreference = message.body;
+        userSession.currentStep = 'scheduling_suggest';
         
-        if (dayIndex >= 0 && dayIndex < availableDays.length) {
-            const selectedDay = availableDays[dayIndex];
-            userSession.selectedDate = selectedDay.date;
-            userSession.currentStep = 'scheduling_time';
-            
-            const availableSlots = getAvailableSlots(selectedDay.date);
-            
-            let timesText = '';
-            availableSlots.forEach((time, index) => {
-                timesText += `${index + 1}. ${time}\n`;
-            });
-            
-            const greeting = userSession.name ? `${userSession.name}, perfeito!` : 'Perfeito!';
-            message.reply(`${greeting} Você escolheu ${selectedDay.formatted}! 😊\n\n*Horários disponíveis:*\n${timesText}\nDigite o número do horário que você prefere! ⏰`);
-        } else {
-            message.reply('Por favor, digite um número válido de 1 a 7 correspondente ao dia que você deseja! 😊');
-        }
+        // Obter próximo dia disponível baseado na preferência
+        const availableDays = getNextAvailableDays();
+        const nextAvailableDay = availableDays[0]; // Pegar o próximo dia disponível
+        
+        // Sugerir horário baseado na preferência e disponibilidade do Google Calendar
+        const suggestedTime = suggestAvailableTime(nextAvailableDay.date, message.body);
+        
+        userSession.selectedDate = nextAvailableDay.date;
+        userSession.selectedTime = suggestedTime;
+        
+        const dateStr = nextAvailableDay.date.toLocaleDateString('pt-BR', {
+            weekday: 'long',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+        
+        const greeting = userSession.name ? `${userSession.name}, perfeito!` : 'Perfeito!';
+        message.reply(`${greeting} Baseado na sua preferência e na agenda do Dr. Marcos, tenho uma sugestão para você! 😊\\n\\n📅 *Data:* ${dateStr}\\n⏰ *Horário:* ${suggestedTime}\\n👨‍⚕️ *Dr. Marcos Figarella*\\n💰 *Valor:* R$ 400,00\\n\\nEsse horário funciona para você? Se sim, me confirme com seus dados:\\n• Telefone de contato\\n• Se é primeira consulta ou retorno\\n\\nSe preferir outro horário, me avise! ❤️`);
     }
     
-    // AGENDAMENTO - Escolha de horário
-    else if (userSession.currentStep === 'scheduling_time' && /^[1-8]$/.test(msgTrimmed)) {
-        const timeIndex = parseInt(msgTrimmed) - 1;
-        const availableSlots = getAvailableSlots(userSession.selectedDate);
-        
-        if (timeIndex >= 0 && timeIndex < availableSlots.length) {
-            const selectedTime = availableSlots[timeIndex];
-            userSession.selectedTime = selectedTime;
-            userSession.currentStep = 'scheduling_confirm';
+    // AGENDAMENTO - Confirmação final
+    else if (userSession.currentStep === 'scheduling_suggest') {
+        if (msgLower.includes('sim') || msgLower.includes('confirmo') || msgLower.includes('ok') || 
+            msgLower.includes('pode ser') || msgLower.includes('aceito') || /\d{8,}/.test(message.body)) {
+            
+            const greeting = userSession.name ? `${userSession.name}, excelente!` : 'Excelente!';
             
             const dateStr = userSession.selectedDate.toLocaleDateString('pt-BR', {
                 weekday: 'long',
@@ -333,30 +393,17 @@ client.on('message', async message => {
                 year: 'numeric'
             });
             
-            const greeting = userSession.name ? `${userSession.name}, ótima` : 'Ótima';
-            message.reply(`${greeting} escolha! 😊\n\n*Resumo do agendamento:*\n📅 Data: ${dateStr}\n⏰ Horário: ${selectedTime}\n👨‍⚕️ Dr. Marcos Figarella\n💰 Valor: R$ 400,00\n\nPara confirmar, preciso do seu:\n• Telefone de contato\n• Se é primeira consulta ou retorno\n\nPode me passar essas informações? ❤️`);
+            // Resetar sessão de agendamento
+            const confirmedTime = userSession.selectedTime;
+            userSession.currentStep = null;
+            userSession.selectedDate = null;
+            userSession.selectedTime = null;
+            userSession.userPreference = null;
+            
+            message.reply(`${greeting} Sua consulta foi agendada com sucesso! 🎉\\n\\n*Detalhes da consulta:*\\n👤 Paciente: ${userSession.name}\\n📅 Data: ${dateStr}\\n⏰ Horário: ${confirmedTime}\\n👨‍⚕️ Dr. Marcos Figarella\\n💰 Valor: R$ 400,00\\n📱 Contato: ${message.body}\\n\\n*Importante:*\\n• Chegue 15 minutos antes\\n• Traga documento com foto\\n• Em caso de cancelamento, avise com 24h de antecedência\\n\\n${getMainMenu(userSession.name)}`);
         } else {
-            message.reply('Por favor, digite um número válido correspondente ao horário que você deseja! 😊');
+            message.reply(`Sem problemas! Me diga qual horário você prefere e vou verificar outras opções na agenda do Dr. Marcos! 😊\\n\\nPor exemplo: "manhã", "tarde", "16h", etc.`);
         }
-    }
-    
-    // AGENDAMENTO - Confirmação final
-    else if (userSession.currentStep === 'scheduling_confirm') {
-        const greeting = userSession.name ? `${userSession.name}, perfeito!` : 'Perfeito!';
-        
-        const dateStr = userSession.selectedDate.toLocaleDateString('pt-BR', {
-            weekday: 'long',
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric'
-        });
-        
-        // Resetar sessão de agendamento
-        userSession.currentStep = null;
-        userSession.selectedDate = null;
-        userSession.selectedTime = null;
-        
-        message.reply(`${greeting} Sua consulta foi agendada com sucesso! 🎉\n\n*Detalhes da consulta:*\n👤 Paciente: ${userSession.name}\n📅 Data: ${dateStr}\n⏰ Horário: ${userSession.selectedTime}\n👨‍⚕️ Dr. Marcos Figarella\n💰 Valor: R$ 400,00\n📱 Contato: ${message.body}\n\n*Importante:*\n• Chegue 15 minutos antes\n• Traga documento com foto\n• Em caso de cancelamento, avise com 24h de antecedência\n\n${getMainMenu(userSession.name)}`);
     }
     
     // Agradecimentos
@@ -365,7 +412,7 @@ client.on('message', async message => {
              msgLower.includes('agradeço') || msgLower.includes('grato') || msgLower.includes('grata')) {
         
         const greeting = userSession.name ? `${userSession.name}, imagina!` : 'Imagina!';
-        message.reply(`${greeting} 😊 Fico muito feliz em poder te ajudar!\n\nO Dr. Marcos e eu estamos sempre aqui para vocês!\n\n${getMainMenu(userSession.name)}`);
+        message.reply(`${greeting} 😊 Fico muito feliz em poder te ajudar!\\n\\nO Dr. Marcos e eu estamos sempre aqui para vocês!\\n\\n${getMainMenu(userSession.name)}`);
     }
     
     // Despedidas
@@ -374,7 +421,7 @@ client.on('message', async message => {
              msgLower.includes('xau') || msgLower.includes('até breve')) {
         
         const greeting = userSession.name ? `Até logo, ${userSession.name}!` : 'Até logo!';
-        message.reply(`${greeting} 👋 Foi um prazer imenso te ajudar!\n\nQualquer coisa que precisar sobre as consultas com o Dr. Marcos, pode me chamar a qualquer momento! Cuide-se bem! ❤️😊`);
+        message.reply(`${greeting} 👋 Foi um prazer imenso te ajudar!\\n\\nQualquer coisa que precisar sobre as consultas com o Dr. Marcos, pode me chamar a qualquer momento! Cuide-se bem! ❤️😊`);
     }
     
     // Resposta padrão - mostrar menu
@@ -382,10 +429,10 @@ client.on('message', async message => {
         if (!userSession.hasIntroduced) {
             userSession.hasIntroduced = true;
             if (userSession.name) {
-                message.reply(`Olá ${userSession.name}! 😊 Eu sou a Camila, secretária do Dr. Marcos Figarella! Estou muito feliz em poder te ajudar!\n\n${getMainMenu(userSession.name)}`);
+                message.reply(`${timeGreeting} ${userSession.name}! 😊 Eu sou a Camila, secretária do Dr. Marcos Figarella! Estou muito feliz em poder te ajudar!\\n\\n${getMainMenu(userSession.name)}`);
             } else {
                 userSession.awaitingName = true;
-                message.reply('Olá! �� Eu sou a Camila, secretária do Dr. Marcos Figarella! Estou muito feliz em falar com você! Para te atender melhor, qual é o seu nome? ❤️');
+                message.reply(`${timeGreeting}! 😊 Eu sou a Camila, secretária do Dr. Marcos Figarella! Estou muito feliz em falar com você! Para te atender melhor, qual é o seu nome? ❤️`);
             }
         } else {
             message.reply(`${getMainMenu(userSession.name)}`);
@@ -410,4 +457,3 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`Servidor rodando na porta ${PORT}`);
     console.log(`Acesse: http://localhost:${PORT}/whatsapp para ver o QR Code`);
 });
-
