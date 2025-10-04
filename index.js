@@ -1,159 +1,71 @@
-const express = require('express');
-const { Client, LocalAuth } = require('whatsapp-web.js');
-const qrcode = require('qrcode-terminal');
-const QRCode = require('qrcode');
-const cron = require('node-cron');
-
-const app = express();
-
-// Variável para armazenar o QR Code
-let qrCodeData = '';
-let qrCodeImage = '';
-let isClientReady = false;
-
-// Rota principal
-app.get('/', (req, res) => {
-    res.send(`
-        <h1>CamilaBot está funcionando!</h1>
-        <p>WhatsApp Status: ${isClientReady ? 'Conectado ✅' : 'Aguardando conexão ⏳'}</p>
-        <a href="/whatsapp">Ver QR Code WhatsApp</a>
-    `);
-});
-
-// Rota para exibir QR Code
-app.get('/whatsapp', (req, res) => {
-    if (isClientReady) {
-        res.send(`
-            <h1>WhatsApp Conectado! ✅</h1>
-            <p>O bot está funcionando normalmente.</p>
-            <a href="/">Voltar</a>
-        `);
-    } else if (qrCodeImage) {
-        res.send(`
-            <html>
-            <head>
-                <title>QR Code WhatsApp</title>
-                <style>
-                    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-                    .qr-container { margin: 20px auto; }
-                    .instructions { max-width: 500px; margin: 20px auto; text-align: left; }
-                    .qr-image { border: 2px solid #25D366; padding: 10px; border-radius: 10px; }
-                </style>
-            </head>
-            <body>
-                <h1>📱 Conectar WhatsApp</h1>
-                <div class="instructions">
-                    <p><strong>Como conectar:</strong></p>
-                    <ol>
-                        <li>Abra o WhatsApp no seu celular</li>
-                        <li>Toque nos 3 pontinhos (⋮) no canto superior direito</li>
-                        <li>Selecione "Dispositivos conectados"</li>
-                        <li>Toque em "Conectar um dispositivo"</li>
-                        <li>Escaneie o QR Code abaixo</li>
-                    </ol>
-                </div>
-                <div class="qr-container">
-                    <img src="${qrCodeImage}" alt="QR Code WhatsApp" class="qr-image" />
-                </div>
-                <p><em>O QR Code expira em alguns minutos. Recarregue a página se necessário.</em></p>
-                <button onclick="location.reload()">🔄 Atualizar QR Code</button>
-                <br><br>
-                <a href="/">← Voltar</a>
-            </body>
-            </html>
-        `);
-    } else {
-        res.send(`
-            <html>
-            <head>
-                <title>WhatsApp - Aguardando</title>
-                <meta http-equiv="refresh" content="5">
-                <style>
-                    body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-                </style>
-            </head>
-            <body>
-                <h1>⏳ Aguardando QR Code...</h1>
-                <p>O QR Code será gerado em instantes...</p>
-                <p><em>Esta página será atualizada automaticamente em 5 segundos.</em></p>
-                <a href="/">← Voltar</a>
-            </body>
-            </html>
-        `);
-    }
-});
-
-// Configuração do cliente WhatsApp
-const client = new Client({
-    authStrategy: new LocalAuth(),
-    puppeteer: {
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-accelerated-2d-canvas',
-            '--no-first-run',
-            '--no-zygote',
-            '--disable-gpu'
-        ]
-    }
-});
-
-// Evento QR Code
-client.on('qr', async (qr) => {
-    qrCodeData = qr;
-    isClientReady = false;
-    
-    try {
-        // Gera imagem do QR Code em base64
-        qrCodeImage = await QRCode.toDataURL(qr, {
-            width: 256,
-            margin: 2,
-            color: {
-                dark: '#000000',
-                light: '#FFFFFF'
-            }
-        });
-        console.log('QR Code gerado! Acesse /whatsapp para visualizar');
-    } catch (error) {
-        console.error('Erro ao gerar QR Code:', error);
-    }
-    
-    qrcode.generate(qr, {small: true});
-});
-
-// Evento quando cliente está pronto
-client.on('ready', () => {
-    console.log('WhatsApp Client is ready!');
-    isClientReady = true;
-    qrCodeData = '';
-    qrCodeImage = '';
-});
-
 // Evento para mensagens recebidas
 client.on('message', message => {
     console.log(`Mensagem recebida: ${message.body}`);
     
-    // Exemplo de resposta automática
-    if (message.body.toLowerCase() === 'oi' || message.body.toLowerCase() === 'olá') {
-        message.reply('Olá! Sou o CamilaBot da Uniclínica. Como posso ajudar?');
+    const msgLower = message.body.toLowerCase();
+    
+    // Saudações
+    if (msgLower.includes('oi') || msgLower.includes('olá') || msgLower.includes('ola') || msgLower.includes('bom dia') || msgLower.includes('boa tarde') || msgLower.includes('boa noite')) {
+        message.reply('Olá! 😊 Aqui é a Camila da Uniclínica! Como posso te ajudar hoje?');
     }
-});
-
-// Evento de desconexão
-client.on('disconnected', (reason) => {
-    console.log('Cliente desconectado:', reason);
-    isClientReady = false;
-    qrCodeData = '';
-    qrCodeImage = '';
-});
-
-// Inicializar cliente WhatsApp
-client.initialize();
-
-// Configuração do servidor
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Servidor rodando na porta ${PORT}`);
-    console.log(`Acesse: http://localhost:${PORT}/whatsapp para ver o QR Code`);
+    
+    // Agendamentos
+    else if (msgLower.includes('agendar') || msgLower.includes('consulta') || msgLower.includes('marcar')) {
+        message.reply('Claro! Vou te ajudar com o agendamento. 📅\n\nPara qual especialidade você gostaria de agendar?\n\n• Psiquiatria\n• Psicologia\n• Outras especialidades\n\nMe conta qual você precisa! 😊');
+    }
+    
+    // Psiquiatria
+    else if (msgLower.includes('psiquiatria') || msgLower.includes('psiquiatra')) {
+        message.reply('Perfeito! Temos excelentes psiquiatras na Uniclínica! 👨‍⚕️\n\nVou verificar a disponibilidade para você. Pode me passar:\n\n• Seu nome completo\n• Telefone\n• Se é primeira consulta ou retorno\n\nAssim consigo agendar no melhor horário! 😊');
+    }
+    
+    // Psicologia
+    else if (msgLower.includes('psicologia') || msgLower.includes('psicologo') || msgLower.includes('psicólogo')) {
+        message.reply('Que bom! Nossos psicólogos são muito carinhosos e profissionais! 💙\n\nPara agendar, preciso de:\n\n• Seu nome\n• Telefone de contato\n• Preferência de horário\n\nVou encontrar o melhor encaixe para você! 😊');
+    }
+    
+    // Informações da clínica
+    else if (msgLower.includes('endereço') || msgLower.includes('endereco') || msgLower.includes('localização') || msgLower.includes('onde fica')) {
+        message.reply('Nossa clínica fica em um local bem acessível! 📍\n\n*Endereço:* [INSERIR ENDEREÇO AQUI]\n\nTemos estacionamento e fica próximo ao transporte público. Qualquer dúvida sobre como chegar, me chama! 😊');
+    }
+    
+    // Horários
+    else if (msgLower.includes('horário') || msgLower.includes('horario') || msgLower.includes('funciona') || msgLower.includes('aberto')) {
+        message.reply('Nossos horários de atendimento são:\n\n🕐 *Segunda a Sexta:* 7h às 18h\n🕐 *Sábado:* 7h às 12h\n\nEstou aqui para te ajudar sempre que precisar! 😊');
+    }
+    
+    // Valores/Convênios
+    else if (msgLower.includes('valor') || msgLower.includes('preço') || msgLower.includes('preco') || msgLower.includes('convênio') || msgLower.includes('convenio') || msgLower.includes('plano')) {
+        message.reply('Sobre valores e convênios, vou te passar as informações certinhas! 💰\n\nTrabalhamos com diversos convênios e também atendimento particular.\n\nMe fala qual convênio você tem ou se é particular, que te passo os detalhes! 😊');
+    }
+    
+    // Emergência/Urgência
+    else if (msgLower.includes('urgente') || msgLower.includes('emergência') || msgLower.includes('emergencia') || msgLower.includes('ajuda')) {
+        message.reply('Entendo que é urgente! 🚨\n\nPara emergências psiquiátricas:\n• *SAMU:* 192\n• *CVV:* 188\n\nSe precisar de atendimento rápido na clínica, me liga:\n*Telefone:* [INSERIR TELEFONE]\n\nEstou aqui para te ajudar! ❤️');
+    }
+    
+    // Cancelamento
+    else if (msgLower.includes('cancelar') || msgLower.includes('desmarcar') || msgLower.includes('remarcar')) {
+        message.reply('Sem problemas! Vou te ajudar com isso. 😊\n\nMe passa:\n• Seu nome\n• Data da consulta agendada\n\nE se quiser remarcar, me fala uma nova preferência de data! 📅');
+    }
+    
+    // Quem é Camila
+    else if (msgLower.includes('quem é você') || msgLower.includes('quem e voce') || msgLower.includes('seu nome')) {
+        message.reply('Eu sou a Camila! 😊 Trabalho na recepção da Uniclínica e estou aqui para te ajudar com agendamentos, informações e tudo que precisar!\n\nSempre com muito carinho e atenção para nossos pacientes! ❤️');
+    }
+    
+    // Obrigado
+    else if (msgLower.includes('obrigado') || msgLower.includes('obrigada') || msgLower.includes('valeu') || msgLower.includes('brigado')) {
+        message.reply('Por nada! 😊 Fico muito feliz em ajudar!\n\nSe precisar de mais alguma coisa, é só me chamar. Estou sempre aqui! ❤️');
+    }
+    
+    // Tchau/Despedida
+    else if (msgLower.includes('tchau') || msgLower.includes('até logo') || msgLower.includes('ate logo') || msgLower.includes('bye')) {
+        message.reply('Até logo! 👋 Foi um prazer te ajudar!\n\nQualquer coisa que precisar, pode me chamar a qualquer momento. Cuide-se bem! ❤️😊');
+    }
+    
+    // Resposta padrão
+    else {
+        message.reply('Oi! 😊 Sou a Camila da Uniclínica!\n\nPosso te ajudar com:\n• 📅 Agendamentos\n• ℹ️ Informações da clínica\n• 📍 Endereço e horários\n• 💰 Convênios e valores\n\nO que você precisa hoje? Estou aqui para te ajudar! ❤️');
+    }
 });
