@@ -379,10 +379,7 @@ ${getMainMenu(extractedName)}`);
                 const greeting1 = userSession.name ? `${userSession.name}` : 'Você';
                 message.reply(`Que ótimo, ${greeting1} quer agendar uma consulta! Fico muito feliz em organizar isso para você! 😊
 
-O Dr. Marcos Figarella atua na área de:
-• Psiquiatria
-• Saúde Mental
-• Avaliações psiquiátricas
+O Dr. Marcos Figarella atua na área de psiquiatria e saúde mental, com atendimento humanizado e acolhedor.
 
 Ele atende nos seguintes dias:
 • Segunda-feira
@@ -399,7 +396,7 @@ Me conta qual horário combina melhor com você? Por exemplo, você prefere de m
                 message.reply(`Claro, ${greeting2}! Vou te contar um pouco sobre o Dr. Marcos e como funciona o atendimento aqui na clínica! 😊
 
 *Sobre o Dr. Marcos Figarella:*
-Ele é um psiquiatra muito experiente e tem uma forma muito acolhedora de atender. Os pacientes sempre falam como se sentem à vontade com ele!
+Ele atua na área de psiquiatria e saúde mental, com atendimento humanizado e acolhedor. Os pacientes sempre falam como se sentem à vontade com ele!
 
 *O que ele trata:*
 • Transtornos de Humor
