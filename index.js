@@ -14,22 +14,6 @@ let isClientReady = false;
 // Armazenar informações dos usuários
 let userSessions = {};
 
-// Função para obter saudação baseada no horário
-function getGreetingByTime() {
-    const now = new Date();
-    const hour = now.getHours();
-    
-    if (hour >= 6 && hour < 12) {
-        return 'Bom dia';
-    } else if (hour >= 12 && hour < 18) {
-        return 'Boa tarde';
-    } else if (hour >= 18 && hour < 24) {
-        return 'Boa noite';
-    } else { // 0h às 6h
-        return 'Boa madrugada';
-    }
-}
-
 // Função para obter próximos dias úteis disponíveis
 function getNextAvailableDays(count = 10) {
     const days = [];
@@ -284,7 +268,6 @@ client.on('message', async message => {
     const userId = message.from;
     const msgLower = message.body.toLowerCase();
     const msgTrimmed = message.body.trim();
-    const timeGreeting = getGreetingByTime(); // SEMPRE obter saudação atual
     
     // Inicializar sessão do usuário se não existir
     if (!userSessions[userId]) {
@@ -333,7 +316,7 @@ client.on('message', async message => {
         userSession.hasIntroduced = true;
         userSession.awaitingName = true;
         
-        message.reply(`${timeGreeting}! Que alegria receber sua mensagem! Eu sou a Camila, trabalho como secretária do Dr. Marcos Figarella. Adoraria te conhecer melhor - qual é o seu nome? 😊`);
+        message.reply(`Olá! Que alegria receber sua mensagem! Eu sou a Camila, trabalho como secretária do Dr. Marcos Figarella. Adoraria te conhecer melhor - qual é o seu nome? 😊`);
         return;
     }
     
@@ -360,7 +343,7 @@ ${getMainMenu(name)}`);
             case 1: // Agendar consulta
                 userSession.currentStep = 'scheduling_preference';
                 const greeting1 = userSession.name ? `${userSession.name}` : 'Você';
-                message.reply(`${timeGreeting}, ${greeting1}! Que ótimo que quer agendar uma consulta! Fico muito feliz em organizar isso para você! 😊
+                message.reply(`Que ótimo, ${greeting1}! Fico muito feliz em organizar uma consulta para você! 😊
 
 O Dr. Marcos Figarella atua na área de psiquiatria e saúde mental, com atendimento humanizado e acolhedor.
 
@@ -376,7 +359,7 @@ Me conta qual horário combina melhor com você? Por exemplo, você prefere de m
                 
             case 2: // Informações de atendimento
                 const greeting2 = userSession.name ? `${userSession.name}` : 'Você';
-                message.reply(`${timeGreeting}, ${greeting2}! Vou te contar um pouco sobre o Dr. Marcos e como funciona o atendimento aqui na clínica! 😊
+                message.reply(`Claro, ${greeting2}! Vou te contar um pouco sobre o Dr. Marcos e como funciona o atendimento aqui na clínica! 😊
 
 *Sobre o Dr. Marcos Figarella:*
 Ele atua na área de psiquiatria e saúde mental, com atendimento humanizado e acolhedor. Os pacientes sempre falam como se sentem à vontade com ele!
@@ -397,7 +380,7 @@ Tem alguma dúvida específica sobre o atendimento?${getBackToMenuOption()}`);
                 
             case 3: // Endereço e horários
                 const greeting3 = userSession.name ? `${userSession.name}` : 'Você';
-                message.reply(`${timeGreeting}, ${greeting3}! Vou te passar todas as informações de localização e horários! 😊
+                message.reply(`Perfeito, ${greeting3}! Vou te passar todas as informações de localização e horários! 😊
 
 *Nossa clínica fica na:*
 Uniclínica Saúde e Bem Estar
@@ -421,7 +404,7 @@ Precisa de mais alguma informação sobre a localização?${getBackToMenuOption(
                 
             case 4: // Valor da consulta
                 const greeting4 = userSession.name ? `${userSession.name}` : 'Você';
-                message.reply(`${timeGreeting}, ${greeting4}! Vou te explicar sobre os valores e formas de pagamento! 😊
+                message.reply(`Claro, ${greeting4}! Vou te explicar sobre os valores e formas de pagamento! 😊
 
 *Valor da Consulta: R$ 400,00*
 (O mesmo valor para primeira consulta e retornos)
@@ -599,7 +582,7 @@ Sempre que precisar de alguma coisa relacionada às consultas do Dr. Marcos, pod
     if (!userSession.hasIntroduced) {
         userSession.hasIntroduced = true;
         userSession.awaitingName = true;
-        message.reply(`${timeGreeting}! Eu sou a Camila, trabalho como secretária do Dr. Marcos Figarella. Qual é o seu nome? Gosto de conhecer as pessoas com quem converso! 😊`);
+        message.reply(`Olá! Eu sou a Camila, trabalho como secretária do Dr. Marcos Figarella. Qual é o seu nome? Gosto de conhecer as pessoas com quem converso! 😊`);
     } else {
         message.reply(`${getMainMenu(userSession.name)}`);
     }
