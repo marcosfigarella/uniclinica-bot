@@ -282,7 +282,7 @@ client.on('message', async message => {
     const userId = message.from;
     const msgLower = message.body.toLowerCase();
     const msgTrimmed = message.body.trim();
-    const timeGreeting = getGreetingByTime();
+    const timeGreeting = getGreetingByTime(); // SEMPRE obter saudação atual
     
     // Inicializar sessão do usuário se não existir
     if (!userSessions[userId]) {
@@ -321,7 +321,7 @@ client.on('message', async message => {
         return;
     }
     
-    // Saudações iniciais - primeira interação
+    // Saudações iniciais - primeira interação (PRIORIDADE MÁXIMA)
     if (!userSession.hasIntroduced && (
         msgLower.includes('oi') || msgLower.includes('olá') || msgLower.includes('ola') || 
         msgLower.includes('bom dia') || msgLower.includes('boa tarde') || msgLower.includes('boa noite') ||
@@ -329,19 +329,13 @@ client.on('message', async message => {
         msgLower.includes('hello') || msgLower.includes('opa') || msgLower.includes('oie'))) {
         
         userSession.hasIntroduced = true;
+        userSession.awaitingName = true;
         
-        if (userSession.name) {
-            message.reply(`${timeGreeting}, ${userSession.name}! Que bom te encontrar aqui! Eu sou a Camila, trabalho como secretária do Dr. Marcos Figarella. Fico muito feliz em poder conversar com você hoje!
-
-${getMainMenu(userSession.name)}`);
-        } else {
-            userSession.awaitingName = true;
-            message.reply(`${timeGreeting}! Que alegria receber sua mensagem! Eu sou a Camila, trabalho como secretária do Dr. Marcos Figarella. Adoraria te conhecer melhor - qual é o seu nome? 😊`);
-        }
+        message.reply(`${timeGreeting}! Que alegria receber sua mensagem! Eu sou a Camila, trabalho como secretária do Dr. Marcos Figarella. Adoraria te conhecer melhor - qual é o seu nome? 😊`);
         return;
     }
     
-    // Se está aguardando o nome
+    // Se está aguardando o nome (SEGUNDA PRIORIDADE)
     if (userSession.awaitingName && !userSession.name) {
         const name = extractName(message.body);
         if (name) {
@@ -356,19 +350,6 @@ ${getMainMenu(name)}`);
         return;
     }
     
-    // Tentar extrair nome da mensagem atual se ainda não temos
-    if (!userSession.name) {
-        const extractedName = extractName(message.body);
-        if (extractedName) {
-            userSession.name = extractedName;
-            userSession.hasIntroduced = true;
-            message.reply(`Que prazer te conhecer, ${extractedName}! Eu sou a Camila, trabalho como secretária do Dr. Marcos Figarella. Como posso te ajudar hoje?
-
-${getMainMenu(extractedName)}`);
-            return;
-        }
-    }
-    
     // MENU PRINCIPAL - Opções 1, 2, 3, 4
     if (userSession.currentStep === null && /^[1-4]$/.test(msgTrimmed)) {
         const option = parseInt(msgTrimmed);
@@ -377,7 +358,7 @@ ${getMainMenu(extractedName)}`);
             case 1: // Agendar consulta
                 userSession.currentStep = 'scheduling_preference';
                 const greeting1 = userSession.name ? `${userSession.name}` : 'Você';
-                message.reply(`Que ótimo, ${greeting1} quer agendar uma consulta! Fico muito feliz em organizar isso para você! 😊
+                message.reply(`${timeGreeting}, ${greeting1}! Que ótimo que quer agendar uma consulta! Fico muito feliz em organizar isso para você! 😊
 
 O Dr. Marcos Figarella atua na área de psiquiatria e saúde mental, com atendimento humanizado e acolhedor.
 
@@ -393,7 +374,7 @@ Me conta qual horário combina melhor com você? Por exemplo, você prefere de m
                 
             case 2: // Informações de atendimento
                 const greeting2 = userSession.name ? `${userSession.name}` : 'Você';
-                message.reply(`Claro, ${greeting2}! Vou te contar um pouco sobre o Dr. Marcos e como funciona o atendimento aqui na clínica! 😊
+                message.reply(`${timeGreeting}, ${greeting2}! Vou te contar um pouco sobre o Dr. Marcos e como funciona o atendimento aqui na clínica! 😊
 
 *Sobre o Dr. Marcos Figarella:*
 Ele atua na área de psiquiatria e saúde mental, com atendimento humanizado e acolhedor. Os pacientes sempre falam como se sentem à vontade com ele!
@@ -414,7 +395,7 @@ Tem alguma dúvida específica sobre o atendimento?${getBackToMenuOption()}`);
                 
             case 3: // Endereço e horários
                 const greeting3 = userSession.name ? `${userSession.name}` : 'Você';
-                message.reply(`Perfeito, ${greeting3}! Vou te passar todas as informações de localização e horários! 😊
+                message.reply(`${timeGreeting}, ${greeting3}! Vou te passar todas as informações de localização e horários! 😊
 
 *Nossa clínica fica na:*
 Uniclínica Saúde e Bem Estar
@@ -438,7 +419,7 @@ Precisa de mais alguma informação sobre a localização?${getBackToMenuOption(
                 
             case 4: // Valor da consulta
                 const greeting4 = userSession.name ? `${userSession.name}` : 'Você';
-                message.reply(`Claro, ${greeting4}! Vou te explicar sobre os valores e formas de pagamento! 😊
+                message.reply(`${timeGreeting}, ${greeting4}! Vou te explicar sobre os valores e formas de pagamento! 😊
 
 *Valor da Consulta: R$ 400,00*
 (O mesmo valor para primeira consulta e retornos)
@@ -612,17 +593,11 @@ Sempre que precisar de alguma coisa relacionada às consultas do Dr. Marcos, pod
         return;
     }
     
-    // Resposta padrão - mostrar menu
+    // Resposta padrão - APENAS se não foi apresentada ainda
     if (!userSession.hasIntroduced) {
         userSession.hasIntroduced = true;
-        if (userSession.name) {
-            message.reply(`${timeGreeting}, ${userSession.name}! Eu sou a Camila, trabalho como secretária do Dr. Marcos Figarella. Como posso te ajudar hoje?
-
-${getMainMenu(userSession.name)}`);
-        } else {
-            userSession.awaitingName = true;
-            message.reply(`${timeGreeting}! Eu sou a Camila, trabalho como secretária do Dr. Marcos Figarella. Qual é o seu nome? Gosto de conhecer as pessoas com quem converso! 😊`);
-        }
+        userSession.awaitingName = true;
+        message.reply(`${timeGreeting}! Eu sou a Camila, trabalho como secretária do Dr. Marcos Figarella. Qual é o seu nome? Gosto de conhecer as pessoas com quem converso! 😊`);
     } else {
         message.reply(`${getMainMenu(userSession.name)}`);
     }
