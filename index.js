@@ -367,7 +367,7 @@ ${getMainMenu(extractedName)}`);
                 const greeting1 = userSession.name ? `${userSession.name}` : 'Você';
                 message.reply(`Que ótimo, ${greeting1} quer agendar uma consulta! Fico muito feliz em organizar isso para você! 😊
 
-O Dr. Marcos é especialista em:
+O Dr. Marcos Figarella atua na área de:
 • Psiquiatria
 • Saúde Mental
 • Avaliações psiquiátricas
@@ -568,7 +568,7 @@ Sempre que precisar de alguma coisa relacionada às consultas do Dr. Marcos, pod
 ${getMainMenu(userSession.name)}`);
         } else {
             userSession.awaitingName = true;
-            message.reply(`${timeGreeting}! Eu sou a Camila, trabalho como secretária do Dr. Marcos Figarella. Qual é o seu nome? Gosto de conhecer as pessoas com quem converso! 😊`);
+            message.reply(`${timeGreeting}! Eu sou a Camila, trabalho como secretária do Dr. Marcos Figarella. Qual é o seu nome? Gosto de conhecer as pessoas com quem converso! ��`);
         }
     } else {
         message.reply(`${getMainMenu(userSession.name)}`);
