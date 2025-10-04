@@ -1,12 +1,14 @@
 const express = require('express');
 const { Client, LocalAuth } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
+const QRCode = require('qrcode');
 const cron = require('node-cron');
 
 const app = express();
 
 // Variável para armazenar o QR Code
 let qrCodeData = '';
+let qrCodeImage = '';
 let isClientReady = false;
 
 // Rota principal
@@ -26,15 +28,16 @@ app.get('/whatsapp', (req, res) => {
             <p>O bot está funcionando normalmente.</p>
             <a href="/">Voltar</a>
         `);
-    } else if (qrCodeData) {
+    } else if (qrCodeImage) {
         res.send(`
             <html>
             <head>
                 <title>QR Code WhatsApp</title>
                 <style>
                     body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-                    #qrcode { margin: 20px auto; }
-                    .instructions { max-width: 500px; margin: 20px auto; }
+                    .qr-container { margin: 20px auto; }
+                    .instructions { max-width: 500px; margin: 20px auto; text-align: left; }
+                    .qr-image { border: 2px solid #25D366; padding: 10px; border-radius: 10px; }
                 </style>
             </head>
             <body>
@@ -49,19 +52,13 @@ app.get('/whatsapp', (req, res) => {
                         <li>Escaneie o QR Code abaixo</li>
                     </ol>
                 </div>
-                <div id="qrcode"></div>
+                <div class="qr-container">
+                    <img src="${qrCodeImage}" alt="QR Code WhatsApp" class="qr-image" />
+                </div>
                 <p><em>O QR Code expira em alguns minutos. Recarregue a página se necessário.</em></p>
                 <button onclick="location.reload()">🔄 Atualizar QR Code</button>
                 <br><br>
                 <a href="/">← Voltar</a>
-                
-                <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
-                <script>
-                    QRCode.toCanvas(document.getElementById('qrcode'), '${qrCodeData}', {
-                        width: 256,
-                        margin: 2
-                    });
-                </script>
             </body>
             </html>
         `);
@@ -70,7 +67,7 @@ app.get('/whatsapp', (req, res) => {
             <html>
             <head>
                 <title>WhatsApp - Aguardando</title>
-                <meta http-equiv="refresh" content="3">
+                <meta http-equiv="refresh" content="5">
                 <style>
                     body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
                 </style>
@@ -78,7 +75,7 @@ app.get('/whatsapp', (req, res) => {
             <body>
                 <h1>⏳ Aguardando QR Code...</h1>
                 <p>O QR Code será gerado em instantes...</p>
-                <p><em>Esta página será atualizada automaticamente.</em></p>
+                <p><em>Esta página será atualizada automaticamente em 5 segundos.</em></p>
                 <a href="/">← Voltar</a>
             </body>
             </html>
@@ -103,48 +100,10 @@ const client = new Client({
 });
 
 // Evento QR Code
-client.on('qr', qr => {
+client.on('qr', async (qr) => {
     qrCodeData = qr;
     isClientReady = false;
-    console.log('QR Code gerado! Acesse /whatsapp para visualizar');
-    qrcode.generate(qr, {small: true});
-});
-
-// Evento quando cliente está pronto
-client.on('ready', () => {
-    console.log('WhatsApp Client is ready!');
-    isClientReady = true;
-    qrCodeData = ''; // Limpa o QR code quando conectado
-});
-
-// Evento para mensagens recebidas
-client.on('message', message => {
-    console.log(`Mensagem recebida: ${message.body}`);
     
-    // Exemplo de resposta automática
-    if (message.body.toLowerCase() === 'oi' || message.body.toLowerCase() === 'olá') {
-        message.reply('Olá! Sou o CamilaBot da Uniclínica. Como posso ajudar?');
-    }
-});
-
-// Evento de desconexão
-client.on('disconnected', (reason) => {
-    console.log('Cliente desconectado:', reason);
-    isClientReady = false;
-    qrCodeData = '';
-});
-
-// Inicializar cliente WhatsApp
-client.initialize();
-
-// Configuração do servidor
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Servidor rodando na porta ${PORT}`);
-    console.log(`Acesse: http://localhost:${PORT}/whatsapp para ver o QR Code`);
-});
-
-
-
-
-
+    try {
+        // Gera imagem do QR Code em base64
+   
