@@ -102,9 +102,8 @@ function extractPreferredTime(message) {
 }
 
 // Função para mostrar menu principal
-function getMainMenu(userName = null) {
-    const greeting = userName ? `${userName}` : 'Você';
-    return `${greeting} pode me dizer o que precisa hoje? Posso te ajudar com:
+function getMainMenu(userName) {
+    return `${userName}, como posso te ajudar hoje? Posso te auxiliar com:
 
 1. Agendar uma consulta
 2. Informações sobre o atendimento
@@ -290,8 +289,17 @@ client.on('message', async message => {
     
     const userSession = userSessions[userId];
     
+    // PRIMEIRA INTERAÇÃO - Se apresentar imediatamente
+    if (!userSession.hasIntroduced) {
+        userSession.hasIntroduced = true;
+        userSession.awaitingName = true;
+        
+        message.reply(`Olá! Que alegria receber sua mensagem! Eu sou a Camila, trabalho como secretária do Dr. Marcos Figarella. Para te atender melhor, qual é o seu nome? 😊`);
+        return;
+    }
+    
     // Voltar ao menu principal
-    if (msgTrimmed === '0') {
+    if (msgTrimmed === '0' && userSession.name) {
         userSession.currentStep = null;
         userSession.selectedDate = null;
         userSession.selectedTime = null;
@@ -306,27 +314,13 @@ client.on('message', async message => {
         return;
     }
     
-    // Saudações iniciais - primeira interação (PRIORIDADE MÁXIMA)
-    if (!userSession.hasIntroduced && (
-        msgLower.includes('oi') || msgLower.includes('olá') || msgLower.includes('ola') || 
-        msgLower.includes('bom dia') || msgLower.includes('boa tarde') || msgLower.includes('boa noite') ||
-        msgLower.includes('alô') || msgLower.includes('alo') || msgLower.includes('ei') ||
-        msgLower.includes('hello') || msgLower.includes('opa') || msgLower.includes('oie'))) {
-        
-        userSession.hasIntroduced = true;
-        userSession.awaitingName = true;
-        
-        message.reply(`Olá! Que alegria receber sua mensagem! Eu sou a Camila, trabalho como secretária do Dr. Marcos Figarella. Adoraria te conhecer melhor - qual é o seu nome? 😊`);
-        return;
-    }
-    
-    // Se está aguardando o nome (SEGUNDA PRIORIDADE)
+    // Se está aguardando o nome
     if (userSession.awaitingName && !userSession.name) {
         const name = extractName(message.body);
         if (name) {
             userSession.name = name;
             userSession.awaitingName = false;
-            message.reply(`Que prazer te conhecer, ${name}! Agora posso te atender de forma mais pessoal. Como posso te ajudar hoje?
+            message.reply(`Que prazer te conhecer, ${name}! Agora posso te atender de forma mais pessoal.
 
 ${getMainMenu(name)}`);
         } else {
@@ -336,14 +330,13 @@ ${getMainMenu(name)}`);
     }
     
     // MENU PRINCIPAL - Opções 1, 2, 3, 4
-    if (userSession.currentStep === null && /^[1-4]$/.test(msgTrimmed)) {
+    if (userSession.currentStep === null && /^[1-4]$/.test(msgTrimmed) && userSession.name) {
         const option = parseInt(msgTrimmed);
         
         switch (option) {
             case 1: // Agendar consulta
                 userSession.currentStep = 'scheduling_preference';
-                const greeting1 = userSession.name ? `${userSession.name}` : 'Você';
-                message.reply(`Que ótimo, ${greeting1}! Fico muito feliz em organizar uma consulta para você! 😊
+                message.reply(`Que ótimo, ${userSession.name}! Fico muito feliz em organizar uma consulta para você! 😊
 
 O Dr. Marcos Figarella atua na área de psiquiatria e saúde mental, com atendimento humanizado e acolhedor.
 
@@ -354,12 +347,11 @@ Ele atende nos seguintes dias:
 • Sexta-feira
 • Sábado
 
-Me conta qual horário combina melhor com você? Por exemplo, você prefere de manhã, à tarde, ou tem algum horário específico em mente?${getBackToMenuOption()}`);
+Me conta, ${userSession.name}, qual horário combina melhor com você? Por exemplo, você prefere de manhã, à tarde, ou tem algum horário específico em mente?${getBackToMenuOption()}`);
                 break;
                 
             case 2: // Informações de atendimento
-                const greeting2 = userSession.name ? `${userSession.name}` : 'Você';
-                message.reply(`Claro, ${greeting2}! Vou te contar um pouco sobre o Dr. Marcos e como funciona o atendimento aqui na clínica! 😊
+                message.reply(`Claro, ${userSession.name}! Vou te contar um pouco sobre o Dr. Marcos e como funciona o atendimento aqui na clínica! 😊
 
 *Sobre o Dr. Marcos Figarella:*
 Ele atua na área de psiquiatria e saúde mental, com atendimento humanizado e acolhedor. Os pacientes sempre falam como se sentem à vontade com ele!
@@ -375,12 +367,11 @@ Ele atua na área de psiquiatria e saúde mental, com atendimento humanizado e a
 - Na primeira consulta, ele faz uma avaliação bem completa
 - Nos retornos, acompanha sua evolução e ajusta o tratamento
 
-Tem alguma dúvida específica sobre o atendimento?${getBackToMenuOption()}`);
+${userSession.name}, tem alguma dúvida específica sobre o atendimento?${getBackToMenuOption()}`);
                 break;
                 
             case 3: // Endereço e horários
-                const greeting3 = userSession.name ? `${userSession.name}` : 'Você';
-                message.reply(`Perfeito, ${greeting3}! Vou te passar todas as informações de localização e horários! 😊
+                message.reply(`Perfeito, ${userSession.name}! Vou te passar todas as informações de localização e horários! 😊
 
 *Nossa clínica fica na:*
 Uniclínica Saúde e Bem Estar
@@ -399,12 +390,11 @@ Santarém - PA, 68005-300
 • Fica bem no centro, fácil de chegar
 • Tem transporte público por perto
 
-Precisa de mais alguma informação sobre a localização?${getBackToMenuOption()}`);
+${userSession.name}, precisa de mais alguma informação sobre a localização?${getBackToMenuOption()}`);
                 break;
                 
             case 4: // Valor da consulta
-                const greeting4 = userSession.name ? `${userSession.name}` : 'Você';
-                message.reply(`Claro, ${greeting4}! Vou te explicar sobre os valores e formas de pagamento! 😊
+                message.reply(`Claro, ${userSession.name}! Vou te explicar sobre os valores e formas de pagamento! 😊
 
 *Valor da Consulta: R$ 400,00*
 (O mesmo valor para primeira consulta e retornos)
@@ -419,14 +409,14 @@ Precisa de mais alguma informação sobre a localização?${getBackToMenuOption(
 • Nossos valores são transparentes, sem taxas extras
 • Se precisar do PIX, posso te passar na hora do agendamento
 
-Tem alguma dúvida sobre o pagamento?${getBackToMenuOption()}`);
+${userSession.name}, tem alguma dúvida sobre o pagamento?${getBackToMenuOption()}`);
                 break;
         }
         return;
     }
     
     // AGENDAMENTO - Capturar preferência de horário
-    if (userSession.currentStep === 'scheduling_preference') {
+    if (userSession.currentStep === 'scheduling_preference' && userSession.name) {
         userSession.userPreference = message.body;
         userSession.currentStep = 'scheduling_suggest';
         
@@ -447,8 +437,7 @@ Tem alguma dúvida sobre o pagamento?${getBackToMenuOption()}`);
             year: 'numeric'
         });
         
-        const greeting = userSession.name ? `${userSession.name}` : 'Você';
-        message.reply(`Perfeito, ${greeting}! Deixa eu verificar a agenda do Dr. Marcos... 😊
+        message.reply(`Perfeito, ${userSession.name}! Deixa eu verificar a agenda do Dr. Marcos... 😊
 
 Tenho uma ótima opção para você:
 
@@ -457,7 +446,7 @@ Tenho uma ótima opção para você:
 👨‍⚕️ *Dr. Marcos Figarella*
 💰 *R$ 400,00*
 
-Esse horário funciona bem para você? Se sim, vou precisar de alguns dados para finalizar o agendamento:
+${userSession.name}, esse horário funciona bem para você? Se sim, vou precisar de alguns dados para finalizar o agendamento:
 
 • Nome completo do paciente
 • CPF
@@ -469,18 +458,17 @@ Se preferir outro horário, é só me avisar!${getBackToMenuOption()}`);
     }
     
     // AGENDAMENTO - Confirmação e coleta de dados
-    if (userSession.currentStep === 'scheduling_suggest') {
+    if (userSession.currentStep === 'scheduling_suggest' && userSession.name) {
         if (msgLower.includes('sim') || msgLower.includes('confirmo') || msgLower.includes('ok') || 
             msgLower.includes('pode ser') || msgLower.includes('aceito')) {
             
             userSession.currentStep = 'collecting_patient_data';
-            const greeting = userSession.name ? `${userSession.name}` : 'Você';
-            message.reply(`Perfeito, ${greeting}! Vamos finalizar seu agendamento. Preciso que me passe os seguintes dados:
+            message.reply(`Perfeito, ${userSession.name}! Vamos finalizar seu agendamento. Preciso que me passe os seguintes dados:
 
 *1. Nome completo do paciente:*
 (Por favor, digite o nome completo)`);
         } else {
-            message.reply(`Sem problema! Me fala qual horário você prefere e vou ver outras opções na agenda do Dr. Marcos! 😊
+            message.reply(`Sem problema, ${userSession.name}! Me fala qual horário você prefere e vou ver outras opções na agenda do Dr. Marcos! 😊
 
 Pode ser algo como "prefiro de manhã", "melhor à tarde", ou um horário específico como "16h".${getBackToMenuOption()}`);
         }
@@ -488,22 +476,22 @@ Pode ser algo como "prefiro de manhã", "melhor à tarde", ou um horário espec�
     }
     
     // AGENDAMENTO - Coletando dados do paciente
-    if (userSession.currentStep === 'collecting_patient_data') {
+    if (userSession.currentStep === 'collecting_patient_data' && userSession.name) {
         if (!userSession.patientData.fullName) {
             userSession.patientData.fullName = message.body;
-            message.reply(`Obrigada! Nome: ${message.body}
+            message.reply(`Obrigada, ${userSession.name}! Nome: ${message.body}
 
 *2. CPF do paciente:*
 (Digite apenas os números ou com pontos e traços)`);
         } else if (!userSession.patientData.cpf) {
             userSession.patientData.cpf = message.body;
-            message.reply(`Perfeito! CPF: ${message.body}
+            message.reply(`Perfeito, ${userSession.name}! CPF: ${message.body}
 
 *3. Data de nascimento:*
 (Digite no formato DD/MM/AAAA)`);
         } else if (!userSession.patientData.birthDate) {
             userSession.patientData.birthDate = message.body;
-            message.reply(`Ótimo! Data de nascimento: ${message.body}
+            message.reply(`Ótimo, ${userSession.name}! Data de nascimento: ${message.body}
 
 *4. Endereço completo:*
 (Rua, número, bairro, cidade)`);
@@ -518,7 +506,7 @@ Pode ser algo como "prefiro de manhã", "melhor à tarde", ou um horário espec�
                 year: 'numeric'
             });
             
-            message.reply(`Maravilha! Todos os dados coletados! 🎉
+            message.reply(`Maravilha, ${userSession.name}! Todos os dados coletados! 🎉
 
 *Resumo da consulta:*
 👤 Paciente: ${userSession.patientData.fullName}
@@ -535,7 +523,7 @@ Pode ser algo como "prefiro de manhã", "melhor à tarde", ou um horário espec�
 • Traga um documento com foto
 • Se precisar cancelar, me avise com pelo menos 24h de antecedência
 
-Sua consulta está confirmada! Estou aqui se precisar de mais alguma coisa!${getBackToMenuOption()}`);
+${userSession.name}, sua consulta está confirmada! Estou aqui se precisar de mais alguma coisa!${getBackToMenuOption()}`);
             
             // Resetar dados após confirmação
             userSession.currentStep = null;
@@ -557,12 +545,15 @@ Sua consulta está confirmada! Estou aqui se precisar de mais alguma coisa!${get
              msgLower.includes('brigado') || msgLower.includes('muito obrigado') ||
              msgLower.includes('agradeço') || msgLower.includes('grato') || msgLower.includes('grata')) {
         
-        const greeting = userSession.name ? `${userSession.name}` : 'Você';
-        message.reply(`Imagina, ${greeting}! Foi um prazer te ajudar! 😊
+        if (userSession.name) {
+            message.reply(`Imagina, ${userSession.name}! Foi um prazer te ajudar! 😊
 
 O Dr. Marcos e eu estamos sempre aqui quando você precisar. Se surgir qualquer dúvida, é só me chamar!
 
 ${getMainMenu(userSession.name)}`);
+        } else {
+            message.reply(`Imagina! Foi um prazer te ajudar! 😊`);
+        }
         return;
     }
     
@@ -571,20 +562,21 @@ ${getMainMenu(userSession.name)}`);
              msgLower.includes('bye') || msgLower.includes('até mais') || msgLower.includes('falou') ||
              msgLower.includes('xau') || msgLower.includes('até breve')) {
         
-        const greeting = userSession.name ? `Até mais, ${userSession.name}!` : 'Até mais!';
-        message.reply(`${greeting} Foi muito bom conversar com você! 😊
+        if (userSession.name) {
+            message.reply(`Até mais, ${userSession.name}! Foi muito bom conversar com você! 😊
 
 Sempre que precisar de alguma coisa relacionada às consultas do Dr. Marcos, pode me procurar. Cuide-se bem! ❤️`);
+        } else {
+            message.reply(`Até mais! Foi muito bom conversar com você! 😊`);
+        }
         return;
     }
     
-    // Resposta padrão - APENAS se não foi apresentada ainda
-    if (!userSession.hasIntroduced) {
-        userSession.hasIntroduced = true;
-        userSession.awaitingName = true;
-        message.reply(`Olá! Eu sou a Camila, trabalho como secretária do Dr. Marcos Figarella. Qual é o seu nome? Gosto de conhecer as pessoas com quem converso! 😊`);
-    } else {
+    // Resposta padrão - se tem nome, mostra menu
+    if (userSession.name) {
         message.reply(`${getMainMenu(userSession.name)}`);
+    } else {
+        message.reply(`Para te atender melhor, preciso saber seu nome. Pode me falar? 😊`);
     }
 });
 
