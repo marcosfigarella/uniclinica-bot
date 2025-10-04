@@ -19,12 +19,14 @@ function getGreetingByTime() {
     const now = new Date();
     const hour = now.getHours();
     
-    if (hour >= 5 && hour < 12) {
+    if (hour >= 6 && hour < 12) {
         return 'Bom dia';
     } else if (hour >= 12 && hour < 18) {
         return 'Boa tarde';
-    } else {
+    } else if (hour >= 18 && hour < 24) {
         return 'Boa noite';
+    } else { // 0h às 6h
+        return 'Boa madrugada';
     }
 }
 
