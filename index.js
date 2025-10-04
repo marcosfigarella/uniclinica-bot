@@ -106,4 +106,54 @@ client.on('qr', async (qr) => {
     
     try {
         // Gera imagem do QR Code em base64
-   
+        qrCodeImage = await QRCode.toDataURL(qr, {
+            width: 256,
+            margin: 2,
+            color: {
+                dark: '#000000',
+                light: '#FFFFFF'
+            }
+        });
+        console.log('QR Code gerado! Acesse /whatsapp para visualizar');
+    } catch (error) {
+        console.error('Erro ao gerar QR Code:', error);
+    }
+    
+    qrcode.generate(qr, {small: true});
+});
+
+// Evento quando cliente está pronto
+client.on('ready', () => {
+    console.log('WhatsApp Client is ready!');
+    isClientReady = true;
+    qrCodeData = '';
+    qrCodeImage = '';
+});
+
+// Evento para mensagens recebidas
+client.on('message', message => {
+    console.log(`Mensagem recebida: ${message.body}`);
+    
+    // Exemplo de resposta automática
+    if (message.body.toLowerCase() === 'oi' || message.body.toLowerCase() === 'olá') {
+        message.reply('Olá! Sou o CamilaBot da Uniclínica. Como posso ajudar?');
+    }
+});
+
+// Evento de desconexão
+client.on('disconnected', (reason) => {
+    console.log('Cliente desconectado:', reason);
+    isClientReady = false;
+    qrCodeData = '';
+    qrCodeImage = '';
+});
+
+// Inicializar cliente WhatsApp
+client.initialize();
+
+// Configuração do servidor
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Servidor rodando na porta ${PORT}`);
+    console.log(`Acesse: http://localhost:${PORT}/whatsapp para ver o QR Code`);
+});
