@@ -293,7 +293,13 @@ client.on('message', async message => {
             currentStep: null,
             selectedDate: null,
             selectedTime: null,
-            userPreference: null
+            userPreference: null,
+            patientData: {
+                fullName: null,
+                cpf: null,
+                birthDate: null,
+                address: null
+            }
         };
     }
     
@@ -305,6 +311,12 @@ client.on('message', async message => {
         userSession.selectedDate = null;
         userSession.selectedTime = null;
         userSession.userPreference = null;
+        userSession.patientData = {
+            fullName: null,
+            cpf: null,
+            birthDate: null,
+            address: null
+        };
         message.reply(`${getMainMenu(userSession.name)}`);
         return;
     }
@@ -482,18 +494,59 @@ Tenho uma ótima opção para você:
 👨‍⚕️ *Dr. Marcos Figarella*
 💰 *R$ 400,00*
 
-Esse horário funciona bem para você? Se sim, me passa seu telefone e me conta se é sua primeira consulta ou se você já é paciente do Dr. Marcos!
+Esse horário funciona bem para você? Se sim, vou precisar de alguns dados para finalizar o agendamento:
+
+• Nome completo do paciente
+• CPF
+• Data de nascimento
+• Endereço completo
 
 Se preferir outro horário, é só me avisar!${getBackToMenuOption()}`);
         return;
     }
     
-    // AGENDAMENTO - Confirmação final
+    // AGENDAMENTO - Confirmação e coleta de dados
     if (userSession.currentStep === 'scheduling_suggest') {
         if (msgLower.includes('sim') || msgLower.includes('confirmo') || msgLower.includes('ok') || 
-            msgLower.includes('pode ser') || msgLower.includes('aceito') || /\d{8,}/.test(message.body)) {
+            msgLower.includes('pode ser') || msgLower.includes('aceito')) {
             
+            userSession.currentStep = 'collecting_patient_data';
             const greeting = userSession.name ? `${userSession.name}` : 'Você';
+            message.reply(`Perfeito, ${greeting}! Vamos finalizar seu agendamento. Preciso que me passe os seguintes dados:
+
+*1. Nome completo do paciente:*
+(Por favor, digite o nome completo)`);
+        } else {
+            message.reply(`Sem problema! Me fala qual horário você prefere e vou ver outras opções na agenda do Dr. Marcos! 😊
+
+Pode ser algo como "prefiro de manhã", "melhor à tarde", ou um horário específico como "16h".${getBackToMenuOption()}`);
+        }
+        return;
+    }
+    
+    // AGENDAMENTO - Coletando dados do paciente
+    if (userSession.currentStep === 'collecting_patient_data') {
+        if (!userSession.patientData.fullName) {
+            userSession.patientData.fullName = message.body;
+            message.reply(`Obrigada! Nome: ${message.body}
+
+*2. CPF do paciente:*
+(Digite apenas os números ou com pontos e traços)`);
+        } else if (!userSession.patientData.cpf) {
+            userSession.patientData.cpf = message.body;
+            message.reply(`Perfeito! CPF: ${message.body}
+
+*3. Data de nascimento:*
+(Digite no formato DD/MM/AAAA)`);
+        } else if (!userSession.patientData.birthDate) {
+            userSession.patientData.birthDate = message.body;
+            message.reply(`Ótimo! Data de nascimento: ${message.body}
+
+*4. Endereço completo:*
+(Rua, número, bairro, cidade)`);
+        } else if (!userSession.patientData.address) {
+            userSession.patientData.address = message.body;
+            userSession.currentStep = 'scheduling_final_confirm';
             
             const dateStr = userSession.selectedDate.toLocaleDateString('pt-BR', {
                 weekday: 'long',
@@ -502,33 +555,36 @@ Se preferir outro horário, é só me avisar!${getBackToMenuOption()}`);
                 year: 'numeric'
             });
             
-            // Resetar sessão de agendamento
-            const confirmedTime = userSession.selectedTime;
-            userSession.currentStep = null;
-            userSession.selectedDate = null;
-            userSession.selectedTime = null;
-            userSession.userPreference = null;
-            
-            message.reply(`Maravilha, ${greeting}! Sua consulta está confirmada! 🎉
+            message.reply(`Maravilha! Todos os dados coletados! 🎉
 
-*Resumo da sua consulta:*
-👤 ${userSession.name}
-📅 ${dateStr}
-⏰ ${confirmedTime}
+*Resumo da consulta:*
+👤 Paciente: ${userSession.patientData.fullName}
+📄 CPF: ${userSession.patientData.cpf}
+🎂 Data de nascimento: ${userSession.patientData.birthDate}
+🏠 Endereço: ${userSession.patientData.address}
+📅 Data: ${dateStr}
+⏰ Horário: ${userSession.selectedTime}
 👨‍⚕️ Dr. Marcos Figarella
-💰 R$ 400,00
-📱 ${message.body}
+💰 Valor: R$ 400,00
 
 *Lembretes importantes:*
 • Chegue uns 15 minutinhos antes
 • Traga um documento com foto
 • Se precisar cancelar, me avise com pelo menos 24h de antecedência
 
-Estou aqui se precisar de mais alguma coisa!${getBackToMenuOption()}`);
-        } else {
-            message.reply(`Sem problema! Me fala qual horário você prefere e vou ver outras opções na agenda do Dr. Marcos! 😊
-
-Pode ser algo como "prefiro de manhã", "melhor à tarde", ou um horário específico como "16h".${getBackToMenuOption()}`);
+Sua consulta está confirmada! Estou aqui se precisar de mais alguma coisa!${getBackToMenuOption()}`);
+            
+            // Resetar dados após confirmação
+            userSession.currentStep = null;
+            userSession.selectedDate = null;
+            userSession.selectedTime = null;
+            userSession.userPreference = null;
+            userSession.patientData = {
+                fullName: null,
+                cpf: null,
+                birthDate: null,
+                address: null
+            };
         }
         return;
     }
@@ -568,7 +624,7 @@ Sempre que precisar de alguma coisa relacionada às consultas do Dr. Marcos, pod
 ${getMainMenu(userSession.name)}`);
         } else {
             userSession.awaitingName = true;
-            message.reply(`${timeGreeting}! Eu sou a Camila, trabalho como secretária do Dr. Marcos Figarella. Qual é o seu nome? Gosto de conhecer as pessoas com quem converso! ��`);
+            message.reply(`${timeGreeting}! Eu sou a Camila, trabalho como secretária do Dr. Marcos Figarella. Qual é o seu nome? Gosto de conhecer as pessoas com quem converso! 😊`);
         }
     } else {
         message.reply(`${getMainMenu(userSession.name)}`);
